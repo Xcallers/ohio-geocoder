@@ -44,7 +44,7 @@ def assign_priority(city: str) -> int:
 def census_batch_geocode(addresses: list) -> dict:
     lines = []
     for a in addresses:
-        addr = a["address"].replace('"', '').replace('\n', ' ')
+        addr = a["address"].replace('"', '').replace('\n', ' ').upper()
         lines.append(f'{a["id"]},"{addr}",,,""\n')
     csv_content = "".join(lines)
     files = {
