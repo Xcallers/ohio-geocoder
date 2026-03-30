@@ -2,7 +2,10 @@
 Ohio Cities Geocoder — FastAPI Backend + Frontend served together
 Deploy on Railway (free tier)
 """
-
+import sys
+print("Python path:", sys.path)
+print("Current dir:", os.getcwd())
+print("Files:", os.listdir("."))
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
