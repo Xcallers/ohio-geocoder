@@ -1,16 +1,12 @@
-"""
-Ohio Cities Geocoder — FastAPI Backend + Frontend served together
-Deploy on Railway (free tier)
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import requests
 import io
+import os
 
-app = FastAPI(title="Ohio Cities Geocoder API")
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,19 +16,18 @@ app.add_middleware(
 )
 
 MARKET_CITIES = [
-    {"keyword": "COLUMBUS",    "display": "Columbus",    "priority": 1},
-    {"keyword": "NEWARK",      "display": "Newark, OH",  "priority": 2},
-    {"keyword": "DELAWARE",    "display": "Delaware",    "priority": 3},
-    {"keyword": "MARION",      "display": "Marion",      "priority": 4},
-    {"keyword": "DAYTON",      "display": "Dayton",      "priority": 5},
-    {"keyword": "SPRINGFIELD", "display": "Springfield", "priority": 6},
-    {"keyword": "CINCINNATI",  "display": "Cincinnati",  "priority": 7},
-    {"keyword": "CLEVELAND",   "display": "Cleveland",   "priority": 8},
+    {"keyword": "COLUMBUS",    "priority": 1},
+    {"keyword": "NEWARK",      "priority": 2},
+    {"keyword": "DELAWARE",    "priority": 3},
+    {"keyword": "MARION",      "priority": 4},
+    {"keyword": "DAYTON",      "priority": 5},
+    {"keyword": "SPRINGFIELD", "priority": 6},
+    {"keyword": "CINCINNATI",  "priority": 7},
+    {"keyword": "CLEVELAND",   "priority": 8},
 ]
 
 CENSUS_URL = "https://geocoding.geo.census.gov/geocoder/locations/addressbatch"
 
-HTML_CONTENT = open("index.html", encoding="utf-8").read()
 
 def assign_priority(city: str) -> int:
     city_up = city.upper()
@@ -41,15 +36,16 @@ def assign_priority(city: str) -> int:
             return mc["priority"]
     return 9
 
+
 def census_batch_geocode(addresses: list) -> dict:
     lines = []
     for a in addresses:
         addr = a["address"].replace('"', '').replace('\n', ' ')
-        lines.append(f'{a["id"]},"{addr}",,,""\n')
+        lines.append('{},"{}",,,""\n'.format(a["id"], addr))
     csv_content = "".join(lines)
     files = {
         "addressFile": ("addresses.csv", io.StringIO(csv_content), "text/csv"),
-        "benchmark":   (None, "Public_AR_Current"),
+        "benchmark": (None, "Public_AR_Current"),
     }
     try:
         resp = requests.post(CENSUS_URL, files=files, timeout=120)
@@ -71,16 +67,22 @@ def census_batch_geocode(addresses: list) -> dict:
                 results[row_id] = seg[1].strip().title()
     return results
 
+
 class AddressItem(BaseModel):
     id: str
     address: str
 
+
 class BatchRequest(BaseModel):
     addresses: list[AddressItem]
 
+
 @app.get("/", response_class=HTMLResponse)
 def serve_frontend():
-    return HTMLResponse(content=HTML_CONTENT)
+    html_path = os.path.join(os.path.dirname(__file__), "index.html")
+    with open(html_path, encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
 
 @app.post("/geocode/batch")
 def geocode_batch(req: BatchRequest):
@@ -97,6 +99,7 @@ def geocode_batch(req: BatchRequest):
         else:
             errors.append(item.id)
     return {"results": results, "errors": errors}
+
 
 @app.get("/health")
 def health():
